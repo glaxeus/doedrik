@@ -1,0 +1,5 @@
+stat statdex.bmp statdex.bmp
+feat featoverwhelming.bmp featcombatarchery.bmp featepicspellpowerpositive.bmp
+feat featepicdamageresistance.bmp featforcedescape.bmp
+diff hard.bmp
+monk 1

@@ -1,6 +1,6 @@
 #IfWinActive  ahk_class Turbine Device Class
 
-GLOBAL window=Me									;;;;;;;;;;;;;;;;;;;;;;;;;;
+GLOBAL window="Dungeons and Dragons Online"									;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 F7::
 sendmode play
@@ -13,17 +13,9 @@ GLOBAL delay=1000
 GLOBAL wx
 GLOBAL wy
 
-GLOBAL rundelay=150									;;;;;;;;;;;;;;;;;;;;;;;;
-GLOBAL level=24										;;;;;;;;;;;;;;;;;;
-GLOBAL stat24="statdex.bmp"								;;;;;;;;;;;;;;;;;;;;;
-GLOBAL stat28="statdex.bmp"								;;;;;;;;;;;;;;;;;;;;;;
-GLOBAL feat21="featgreatdexterity.bmp"							;;;;;;;;;;;;;;;;;;;;;;
-GLOBAL feat24="featgreatdexterity.bmp"							;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-GLOBAL feat26="featholystrike.bmp"							;;;;;;;;;;;;;;;;;;;;;;;;;;;
-GLOBAL feat27="featgreatdexterity.bmp"							;;;;;;;;;;;;;;;;;;;;;;
-GLOBAL feat28="feattough.bmp"								;;;;;;;;;;;;;;;;;;;;;;;;
-diff=normal.bmp										;сложность, elite.bmp, hard.bmp, norm.bmp
-monkrecall=0										;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+GLOBAL rundelay=150
+GLOBAL diff=hard.bmp										;сложность, elite.bmp, hard.bmp, norm.bmp
+GLOBAL monkrecall=1										;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 dllcall("ReadProcessMemory", "Uint", HWND, "Uint", 0x015ACF04, "Uint*", hpointer, "Uint", 4, "Uint *", 0)
 GLOBAL hpointer:=hpointer+0x24528
@@ -32,11 +24,6 @@ WinGetPos, , , wx, wy, A
 i=0
 j=0
 pi=3.141592653589793
-;gui new
-;Gui +LastFound +AlwaysOnTop -Caption +ToolWindow  
-;Gui, Add, text, vMyText,xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-;WinSet, TransColor, 000000 500
-;Gui, Show, x10 y460 NoActivate  
 hi=0
 
 giant := Object()
@@ -44,11 +31,30 @@ giantwild := Object()
 market := Object()
 crucible := Object()
 
+GLOBAL options := Object()
 
+readOptions()
+{
+	optionKey := ""
+	Loop, read, %a_scriptdir%\options.txt
+	{
+		Loop, parse, A_LoopReadLine, %A_Space%
+		{
+			j=%a_index%
+			if (j=1) {
+				optionKey := a_loopfield
+				if !options.HasKey(optionKey)
+					options[optionKey] := []
+			} else {
+				options[optionKey].Insert(a_loopfield)
+			}
+		}
+	}
+	diff := options["diff"][1] ;берет первое значение ото вдруг тама пробел в конце строки
+	monkrecall := options["monk"][1]
+}
 
-
-
-
+readOptions()
 
 read(byref xx, byref yy, byref zz, byref hh)
 {
@@ -172,25 +178,7 @@ logic(matr)
 ;			move(matr[i,1], matr[i,2], i)
 			send {w up}
 			sleep 50
-			if level=20
-				level(none, feat21)
-			else if level=21
-				level(none, none)
-			else if level=22
-				level(none, none)
-			else if level=23
-				level(stat24, feat24)
-			else if level=24
-				level(none, none)
-			else if level=25
-				level(none, feat26)
-			else if level=26
-				level(none, feat27)
-			else if level=27
-				level(stat28, feat28)
-			level:=level+1
-			if level=28
-				exit
+			level()
 			send {w down}
 			sleep 50
 			continue
@@ -288,8 +276,29 @@ talk()
 		imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\arrow.bmp	
 	}	
 }
+waitForAdvacementImage()
+{
+	Loop {
+		sleep 50
+		imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\titleadv.bmp
+	} Until errorlevel=0
+	mousemove, x, y
+	sleep 50
+	mouseclick, left, x, y
+	sleep 50
+}
+waitForNextImage()
+{
+	Loop {
+		sleep 100
+		imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\next.bmp	
+	} Until errorlevel=0
+	mousemove, x, y
+	sleep 50
+	mouseclick, left, x, y
+}
 
-level(ability, feat)
+level()
 {
 	click up right
 	sleep 50
@@ -299,83 +308,69 @@ level(ability, feat)
 	talk()
 
 	sendmode event
-	imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\advancement.bmp
-	mouseclick, left, x, y
-	sleep 50
-;	mouseclick, left, x, y
-;	sleep 50
 
-	if ability!=none
+	waitForAdvacementImage()
+
+	abilityfile := a_scriptdir . "\scriptlogic\" . options["stat"][1] ;покачто всегда будет всегда первую абилку из options.txt повышать
+	imagesearch, x3, y3, 0, 0, wx, wy, %abilityfile%
+	if errorlevel=0
 	{
-		imagesearch, x3, y3, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\%ability%
 		imagesearch, x, y, x3, y3, wx, wy, %a_scriptdir%\scriptlogic\statplus.bmp
-		mouseclick, left, x, y
+		mousemove, x, y
 		sleep 50
 		mouseclick, left, x, y
-
-		imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\next.bmp
-		while errorlevel!=0
-		{
-			sleep 100
-			imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\next.bmp	
-		}
-		mouseclick, left, x, y
-		sleep 50
-		mouseclick, left, x, y
+		waitForNextImage()
 	}
 
-	imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\advancement.bmp
-	mouseclick, left, x, y
-	sleep 50
-;	mouseclick, left, x, y
-;	sleep 50
+	waitForAdvacementImage()
 
-	if feat!=none
+	Loop, 10
 	{
 		imagesearch, x1, y1, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\featempt.bmp
-		while errorlevel=1
-		{
-			sleep 100
-			imagesearch, x1, y1, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\featempt.bmp
-		}
+		if errorlevel=0
+			break
+	}
+	allDone := 0
+	if errorlevel=0
+	{
 		imagesearch, x2, y2, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\featslider.bmp
-		imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptfeats\%feat%
-		while errorlevel!=0
-		{
-			MouseClickDrag, left, x2, y2, x2, (y2+5)
-			y2:=y2+5
+		y2Next := y2
+		Loop {
 			sleep 100
-			imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptfeats\%feat%
-		}
+			MouseClickDrag, left, x2, y2, x2, y2Next
+			maxIndex := options["feat"]._maxindex()
+			i := 1
+			Loop {
+				featImageFile := a_scriptdir . "\scriptfeats\" . options["feat"][i]
+				imagesearch, x, y, 0, 0, wx, wy, %featImageFile%
+				i := i + 1
+				if (i > maxIndex and errorlevel=0)
+					allDOne := 1
+				if (i > maxIndex or errorlevel=0)
+					Break
+			}
+			y2 := y2Next
+			y2Next := y2+5
+		} Until errorlevel=0
 
 		sleep 50
 		MouseClickDrag, left, x, y, x1, y1
 		sleep 50
 		mousemove, (wx/2), (wy/2)
-		imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\next.bmp
-		while errorlevel!=0
-		{
-			sleep 100
-			imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\next.bmp	
-		}
-		mouseclick, left, x, y
-		sleep 50
-;		mouseclick, left, x, y
+		waitForNextImage()
 	}
 
-	imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\advancement.bmp
-	mouseclick, left, x, y
-	sleep 50
-;	mouseclick, left, x, y
-;	sleep 50
+	waitForAdvacementImage()
 
-	imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\finish.bmp
-	while errorlevel!=0
-	{
+	Loop {
 		sleep 100
 		imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\finish.bmp	
-	}	
+	} Until errorlevel=0	
+	mousemove, x, y
+	sleep 50
 	mouseclick, left, x, y
+	if allDone = 1
+		exit ;все последний фит поставили можно выходитьw
 	sleep 10000
 
 	sendmode play
@@ -450,7 +445,7 @@ while i=0
 			send {q}								;открываем меню
 			sleep 100
 			send {e}
-;			sleep delay								;раскомментить в случае проблем
+			sleep delay								;раскомментить в случае проблем
 			imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\menu.bmp
 			j=0
 			while ((errorlevel=1) and (j<=delay))					;ждем 1 сек как откроется меню
@@ -469,7 +464,7 @@ while i=0
 			imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\reset.bmp		;смотрим нужно ли ресетить квест и ресетим
 			if errorlevel=0
 			{
-				mouseclick, left, x, y						;reset button
+				mousemove, x, y						;reset button
 				sleep 100
 				mouseclick, left, x, y
 				sleep 100
@@ -481,13 +476,15 @@ while i=0
 				}
 				while errorlevel=0
 				{
-					sleep 100
+					sleep 50
+					mousemove, x, y
+					sleep 50
 					mouseclick, left, x, y
 					sleep 50
 					mousemove, (wx/2), (wy/2)
 					imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\yes.bmp				
 				}
-;				MouseClick, left, (wx/2-48), (wy/2+60)        			;Yes BUTTON
+;				Mousemove, (wx/2-48), (wy/2+60)        			;Yes BUTTON
 ;				sleep 50
 ;				MouseClick, left, (wx/2-48), (wy/2+60)        			
 				imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\menu.bmp
@@ -499,7 +496,7 @@ while i=0
 				send {q}
 				sleep 100
 				send {e}
-;				sleep delay							;раскомментить в случае проблем
+				sleep delay							;раскомментить в случае проблем
 				j=0
 				imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\menu.bmp
 				while ((errorlevel=1) and (j<=delay))
@@ -518,7 +515,7 @@ while i=0
 			imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\%diff%		;ищем кнопку с элитной сложностью
 			if errorlevel=0
 			{
-				mouseclick, left, x, y						;жмем элиту
+				mousemove, x, y						;жмем элиту
 				sleep 100
 				mouseclick, left, x, y
 				sleep 100
@@ -527,7 +524,7 @@ while i=0
 			imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\enter.bmp		;ищем и жмем вход
 			if errorlevel=0
 			{
-				mouseclick, left, x, y
+				mousemove, x, y
 				sleep 100
 				mouseclick, left, x, y
 				sleep 100
@@ -564,25 +561,26 @@ while i=0
 			sleep 50
 			click, up, right
 			j=0
-			mouseclick, left, x, y							;жмем рекол
 			sleep 100
+			mousemove, x, y
+			sleep 50
 			mouseclick, left, x, y
-			sleep 100	
-
+			
 			if monkrecall=1								;жмем первую или вторую стоку
 			{
-				Send ^{1}
+				Send +{1}
 				monkrecall=2
 			}
 			else if monkrecall=2
 			{
-				send ^{3}
+				send +{2}
 				monkrecall=1
 			}
-			sleep, 230	
-	
-			MouseClick, left, (wx/2-48), (wy/2+100)        				;Yes BUTTON
-	
+			;Yes BUTTON
+			mousemove, (wx/2-48), (wy/2+100)
+			sleep 50
+			MouseClick, left, (wx/2-48), (wy/2+100)
+
 			imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\ruins.bmp			;ждем 20 секунд или пока не среколимся
 			while (errorlevel=1 and j<=20000)
 			{
@@ -622,9 +620,9 @@ while i=0
 	while errorlevel=0
 	{
 		sleep 100
-		send ^{2}
+		send +{7}
 		sleep 1000
-		send ^{2}
+		send +{7}
 		sleep 1000
 				
 		imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\ruins.bmp
@@ -640,53 +638,18 @@ while i=0
 		}
 		errorlevel=0
 	}
-
-/*
-	read(xx,yy,zz,hh)
-	while hh!=268.593750
-	{
-		sleep 100
-		send ^{2}
-		sleep 1000
-		send ^{2}
-		sleep 1000
-
-		imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\ruins.bmp
-		if errorlevel=0
-		{
-			sleep 5000
-			continue 1
-		}
-		else if errorlevel=1
-		{
-			j=0
-			while j=0
-			{
-				sleep 100
-				imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\market.bmp
-				if errorlevel=0
-					break
-				imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\market1.bmp
-				if errorlevel=0
-					break
-				imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\market2.bmp
-				if errorlevel=0
-					break
-			}
-		}
-		read(xx,yy,zz,hh)
-	}
-*/	
-
-	send {w down}
-	sleep 50
-	send {w down}
+	sleep 1000
+	mousemove, (wx/2), (wy/2)
 	sleep 50
 	click down right
 	sleep 50
 	click down right
 	sleep 50
 	mousemove, 0, -90*mult, 100, R
+	sleep 50
+	send {w down}
+	sleep 50
+	send {w down}
 	sleep 50		
 	logic(market)
 	sleep 50
@@ -712,7 +675,7 @@ while i=0
 			imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\menu.bmp
 			j:=j+100
 		}
-		mouseclick, left, x, y
+		mousemove, x, y
 		sleep 100
 		mouseclick, left, x, y
 		sleep 100
@@ -722,7 +685,7 @@ while i=0
 	imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\enter.bmp		;ищем и жмем вход
 	if errorlevel=0
 	{
-		mouseclick, left, x, y
+		mousemove, x, y
 		sleep 100
 		mouseclick, left, x, y
 		sleep 100
@@ -732,15 +695,32 @@ while i=0
 	imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\giant.bmp
 	while errorlevel!=0
 	{
+/*
 		send ^{4}
+		sleep 100
+		send {1}
+		sleep 1700
+		send {5}
+		sleep 1700
+		send {1}
+		sleep 100
+		send {6} ;fire-light-fire addskill
+		sleep 100
+		send ^{1}
+		sleep 50
+*/
+		send +{9} ;skilbost
+		sleep 100
+
+		send +{8}
 		sleep 1000
-		send ^{4}
+		send +{8}
 		sleep 2000
 		imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\gtmenu.bmp
 		if errorlevel=0
 		{
 			imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\gtaccept.bmp
-			mouseclick, left, x, y						;жмем элиту
+			mousemove, x, y						;жмем акцепт на скролл греат телепорт
 			sleep 100
 			mouseclick, left, x, y
 			sleep 100
@@ -771,6 +751,8 @@ while i=0
 	j:=delay+1
 	while j>delay
 	{
+		send {q}
+		sleep 50
 		send {e}
 		sleep 50
 		imagesearch, , , 0, 0, wx, wy, %a_scriptdir%\scriptlogic\menu.bmp
@@ -785,7 +767,7 @@ while i=0
 	imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\enter.bmp		;ищем и жмем вход
 	if errorlevel=0
 	{
-		mouseclick, left, x, y
+		mousemove, x, y
 		sleep 100
 		mouseclick, left, x, y
 		sleep 100
@@ -829,16 +811,16 @@ feat=featgm.bmp
 
 
 imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\advancement.bmp
+mousemove, x, y
+sleep 50
 mouseclick, left, x, y
 sleep 50
-;mouseclick, left, x, y
-;sleep 50
 
 imagesearch, x3, y3, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\%ability%
 imagesearch, x, y, x3, y3, wx, wy, %a_scriptdir%\scriptlogic\statplus.bmp
+mousemove, x, y
+sleep 50
 mouseclick, left, x, y
-;sleep 50
-;mouseclick, left, x, y
 
 imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\next.bmp
 while errorlevel!=0
@@ -846,6 +828,8 @@ while errorlevel!=0
 	sleep 100
 	imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\next.bmp	
 }
+mousemove, x, y
+sleep 50
 mouseclick, left, x, y
 
 imagesearch, x1, y1, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\featempt.bmp
@@ -874,6 +858,8 @@ while errorlevel!=0
 	sleep 100
 	imagesearch, x, y, 0, 0, wx, wy, %a_scriptdir%\scriptlogic\next.bmp	
 }
+mousemove, x, y
+sleep 50
 mouseclick, left, x, y
 return
 
